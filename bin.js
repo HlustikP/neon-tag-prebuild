@@ -1,17 +1,24 @@
 #!/usr/bin/env node
-import { existsSync, copyFileSync } from 'node:fs';
+import { existsSync, copyFileSync, rmSync } from 'node:fs';
 import { arch as _arch, platform as _platform } from 'node:os';
 import { join } from 'node:path';
-import { sync } from 'mkdirp';
+import { mkdirp } from 'mkdirp'
 import { getAbi } from 'node-abi';
 import * as minimist from 'minimist';
 
 function isElectron() {
-    if (process.versions && process.versions.electron) return true;
-    if (process.env.ELECTRON_RUN_AS_NODE) return true;
-    if (process.env.npm_config_runtime === 'electron') return true;
+    if (process.versions && process.versions.electron) {
+        return true
+    };
+    if (process.env.ELECTRON_RUN_AS_NODE) {
+        return true
+    };
+    if (process.env.npm_config_runtime === 'electron') {
+        return true
+    };
+
     return (
-    typeof window !== 'undefined' &&
+        typeof window !== 'undefined' &&
         window.process &&
         window.process.type === 'renderer'
     );
@@ -29,35 +36,37 @@ function getFilename() {
     const tags = [];
     tags.push(runtime);
     tags.push('abi' + getAbi(target, runtime));
-    // if (uv) tags.push('uv' + uv); // FIXME: support?
+
     if (armv) {
         tags.push('armv' + armv);
     }
     if (libc) {
         tags.push(libc);
     }
+
     return tags.join('.') + '.node';
 }
 
 const vars = (process.config && process.config.variables) || {};
-// const abi = process.versions.modules;
 const runtime = isElectron() ? 'electron' : 'node';
 const arch = _arch();
 const platform = _platform();
 const libc = process.env.LIBC || (isAlpine(platform) ? 'musl' : null);
 const armv = process.env.ARM_VERSION || (arch === 'arm64' ? '8' : vars.arm_version) || '';
-// const uv = (process.versions.uv || '').split('.')[0];
-
 const defaultInPath = join('.', 'native', 'index.node');
+
 // Get rid of `node` and the filename
 const cmdArgs = process.argv.slice(2);
 const flagOptions = {
     alias: {
-        'f': ['file', 'i', 'input'],
-        'o': 'output',
-    }
+        'f': ['file', 'i', 'input'],    // Input file
+        'o': 'output',                  // Output directory
+        'd': ['delete', 'r', 'remove']  // Delete original file after copying
+    },
+    boolean: ['d', 'delete', 'r', 'remove']
 };
-const argv = minimist(cmdArgs, flagOptions);
+const argv = minimist.default(cmdArgs, flagOptions);
+
 const modulePath = argv.file ?? defaultInPath;
 if (!existsSync(modulePath)) {
     throw new Error(
@@ -65,13 +74,18 @@ if (!existsSync(modulePath)) {
     );
 }
 
-const outPath = cmdArgs.output ?? join('.', 'prebuild');
+const outPath = argv.output ?? join('.', 'prebuild');
 const prebuildSubdir = `${platform}-${arch}`;
 const fullOutPath = join(outPath, prebuildSubdir);
-sync(fullOutPath);
+mkdirp.sync(fullOutPath);
 const dest = join(fullOutPath, getFilename());
-copyFileSync(modulePath, dest, (err) => {
-    if (err) {
-        throw err;
-    }
-});
+
+// Copy and tag file
+copyFileSync(modulePath, dest);
+console.log(`Successfully copied and tagged file as ${dest}`);
+
+// Delete source file
+if (argv.delete) {
+    rmSync(modulePath);
+    console.log(`Successfully removed source file ${modulePath}`);
+}
