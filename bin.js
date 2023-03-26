@@ -74,7 +74,7 @@ if (!existsSync(modulePath)) {
     );
 }
 
-const outPath = argv.output ?? join('.', 'prebuild');
+const outPath = argv.output ?? join('.', 'prebuilds');
 const prebuildSubdir = `${platform}-${arch}`;
 const fullOutPath = join(outPath, prebuildSubdir);
 mkdirp.sync(fullOutPath);
