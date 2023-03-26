@@ -1,58 +1,77 @@
 #!/usr/bin/env node
-
-var fs = require('fs');
-var os = require('os');
-var path = require('path');
-var mkdirp = require('mkdirp');
-var nodeAbi = require('node-abi');
-
-var vars = (process.config && process.config.variables) || {};
-var abi = process.versions.modules;
-var runtime = isElectron() ? 'electron' : 'node';
-var arch = os.arch();
-var platform = os.platform();
-var libc = process.env.LIBC || (isAlpine(platform) ? 'musl' : null);
-var armv =
-  process.env.ARM_VERSION || (arch === 'arm64' ? '8' : vars.arm_version) || '';
-var uv = (process.versions.uv || '').split('.')[0];
-
-var orig = path.join('.', 'native', 'index.node');
-if (!fs.existsSync(orig)) {
-  throw new Error(
-    'there is no ./native/index.node built by Neon to mark as prebuild',
-  );
-}
-var dirname = path.join('.', 'prebuilds', platform + '-' + arch);
-mkdirp.sync(dirname);
-var dest = path.join(dirname, getFilename());
-fs.copyFile(orig, dest, (err) => {
-  if (err) throw err;
-});
+import { existsSync, copyFileSync } from 'node:fs';
+import { arch as _arch, platform as _platform } from 'node:os';
+import { join } from 'node:path';
+import { sync } from 'mkdirp';
+import { getAbi } from 'node-abi';
+import * as minimist from 'minimist';
 
 function isElectron() {
-  if (process.versions && process.versions.electron) return true;
-  if (process.env.ELECTRON_RUN_AS_NODE) return true;
-  if (process.env.npm_config_runtime === 'electron') return true;
-  return (
+    if (process.versions && process.versions.electron) return true;
+    if (process.env.ELECTRON_RUN_AS_NODE) return true;
+    if (process.env.npm_config_runtime === 'electron') return true;
+    return (
     typeof window !== 'undefined' &&
-    window.process &&
-    window.process.type === 'renderer'
-  );
+        window.process &&
+        window.process.type === 'renderer'
+    );
 }
 
 function isAlpine(platform) {
-  return platform === 'linux' && fs.existsSync('/etc/alpine-release');
+    return platform === 'linux' && existsSync('/etc/alpine-release');
 }
 
 function getFilename() {
-  var target = isElectron()
-    ? process.env.npm_config_target
-    : process.versions.node;
-  var tags = [];
-  tags.push(runtime);
-  tags.push('abi' + nodeAbi.getAbi(target, runtime));
-  // if (uv) tags.push('uv' + uv); // FIXME: support?
-  if (armv) tags.push('armv' + armv);
-  if (libc) tags.push(libc);
-  return tags.join('.') + '.node';
+    const target = isElectron()
+        ? process.env.npm_config_target
+        : process.versions.node;
+
+    const tags = [];
+    tags.push(runtime);
+    tags.push('abi' + getAbi(target, runtime));
+    // if (uv) tags.push('uv' + uv); // FIXME: support?
+    if (armv) {
+        tags.push('armv' + armv);
+    }
+    if (libc) {
+        tags.push(libc);
+    }
+    return tags.join('.') + '.node';
 }
+
+const vars = (process.config && process.config.variables) || {};
+// const abi = process.versions.modules;
+const runtime = isElectron() ? 'electron' : 'node';
+const arch = _arch();
+const platform = _platform();
+const libc = process.env.LIBC || (isAlpine(platform) ? 'musl' : null);
+const armv = process.env.ARM_VERSION || (arch === 'arm64' ? '8' : vars.arm_version) || '';
+// const uv = (process.versions.uv || '').split('.')[0];
+
+const defaultInPath = join('.', 'native', 'index.node');
+// Get rid of `node` and the filename
+const cmdArgs = process.argv.slice(2);
+const flagOptions = {
+    alias: {
+        'f': ['file', 'i', 'input'],
+        'o': 'output',
+    }
+};
+const argv = minimist(cmdArgs, flagOptions);
+const modulePath = argv.file ?? defaultInPath;
+if (!existsSync(modulePath)) {
+    throw new Error(
+        `No input file found: There is no ${modulePath} built by Neon to mark as prebuild`,
+    );
+}
+
+const outPath = cmdArgs.output ?? join('.', 'prebuild');
+const prebuildSubdir = `${platform}-${arch}`;
+const fullOutPath = join(outPath, prebuildSubdir);
+sync(fullOutPath);
+const dest = join(fullOutPath, getFilename());
+copyFileSync(modulePath, dest, (err) => {
+    if (err) {
+        throw err;
+    }
+});

@@ -1,22 +1,24 @@
 {
   "name": "neon-tag-prebuild",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Rename a Neon index.node to a prebuildify-style file",
+  "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/staltz/neon-tag-prebuild.git"
+    "url": "https://github.com/hlustikp/neon-tag-prebuild.git"
   },
   "author": "Andre Staltz (staltz.com)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/staltz/neon-tag-prebuild/issues"
+    "url": "https://github.com/hlustikp/neon-tag-prebuild/issues"
   },
-  "homepage": "https://github.com/staltz/neon-tag-prebuild",
+  "homepage": "https://github.com/hlustikp/neon-tag-prebuild",
   "main": "index.js",
   "bin": {
     "neon-tag-prebuild": "./bin.js"
   },
   "dependencies": {
+    "minimist": "^1.2.8",
     "mkdirp": "^1.0.4",
     "node-abi": "^2.19.1"
   }

@@ -1,5 +1,10 @@
 # neon-tag-prebuild
 
+This is a fork of the original `neon-tag-prebuild` project aimed at updating the code to a modern
+standard and adding more funtionality.
+
+Thanks to the original maintainers for the awesome work they've done on the original project!
+
 > A CLI to rename a [Neon](https://neon-bindings.com) `index.node` to a prebuildify-style file
 
 ```
